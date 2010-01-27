@@ -26,7 +26,7 @@ Blender: 250
 __author__ = ["Buerbaum Martin (Pontiac)"]
 __url__ = ["http://gitorious.org/blender-scripts/blender-measure-panel-script",
     "http://blenderartists.org/forum/showthread.php?t=177800"]
-__version__ = '0.2'
+__version__ = '0.2.1'
 __bpydoc__ = """
 Measure panel
 
@@ -44,6 +44,8 @@ It's very helpful to use one or two "Empty" objects with
 "Snap during transform" enabled for fast measurement.
 
 Version history:
+v0.2.1 - Small fix (selecting nothing didn't calculate the distance
+    of the cursor from the origin anymore)
 v0.2 - Distance value is now displayed via a FloatProperty widget (and
     therefore saved to file too right now [according to ideasman42].
     The value is save inside the scene right now.)
@@ -119,8 +121,8 @@ class VIEW3D_PT_measure(bpy.types.Panel):
             row.label(text="", icon='OBJECT_DATA')
             row.prop(obj, "name", text="")
 
-        elif (context.selected_objects
-            and len(context.selected_objects) == 0):
+        elif (not context.selected_objects
+            or len(context.selected_objects) == 0):
             # Nothing selected.
             # We measure the distance from the origin to the 3D cursor.
             test = Vector(context.scene.cursor_location)
