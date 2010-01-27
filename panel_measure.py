@@ -26,7 +26,7 @@ Blender: 250
 __author__ = ["Buerbaum Martin (Pontiac)"]
 __url__ = ["http://gitorious.org/blender-scripts/blender-measure-panel-script",
     "http://blenderartists.org/forum/showthread.php?t=177800"]
-__version__ = '0.3'
+__version__ = '0.3.1'
 __bpydoc__ = """
 Measure panel
 
@@ -46,6 +46,9 @@ It's very helpful to use one or two "Empty" objects with
 
 Version history:
 
+v0.3.1 - Fixed bug where "measure_panel_dist" wasn't defined
+    before it was used.
+    Also added the distance calculation "origin -> 3D cursor" for edit mode.
 v0.3 - Support for mesh edit mode (1 or 2 selected vertices)
 v0.2.1 - Small fix (selecting nothing didn't calculate the distance
     of the cursor from the origin anymore)
@@ -77,6 +80,12 @@ class VIEW3D_PT_measure(bpy.types.Panel):
         # Get the active object.
         obj = context.active_object
 
+        # Define a temporary attribute for the distance value
+        context.scene.FloatProperty(
+            name="Distance",
+            attr="measure_panel_dist",
+            precision=6)
+
         if (context.mode == 'EDIT_MESH'):
             if (obj and obj.type == 'MESH' and obj.data):
                 # We need to make sure we have the most recent mesh state!
@@ -93,7 +102,20 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 # @todo: Better 8more efficient) way to do this?
                 verts_selected = [v for v in mesh.verts if v.selected == 1]
 
-                if len(verts_selected) == 1:
+                if len(verts_selected) == 0:
+                    # Nothing selected.
+                    # We measure the distance from the origin to the 3D cursor.
+                    test = Vector(context.scene.cursor_location)
+                    context.scene.measure_panel_dist = test.length
+
+                    row = layout.row()
+                    row.prop(context.scene, "measure_panel_dist")
+
+                    row = layout.row()
+                    row.label(text="", icon='CURSOR')
+                    row.label(text="", icon='ARROW_LEFTRIGHT')
+                    row.label(text="Origin [0,0,0]")
+                elif len(verts_selected) == 1:
                     # One vertex selected.
                     # We measure the distance from the
                     # selected vertex object to the 3D cursor.
@@ -134,12 +156,6 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.label(text="Selection not supported.", icon='INFO')
 
         elif (context.mode == 'OBJECT'):
-            # Define a temporary attribute for the distance value
-            context.scene.FloatProperty(
-                name="Distance",
-                attr="measure_panel_dist",
-                precision=6)
-
             if (context.selected_objects
                 and len(context.selected_objects) == 2):
                 # 2 objects selected.
