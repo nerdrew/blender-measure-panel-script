@@ -26,7 +26,7 @@ Blender: 250
 __author__ = ["Buerbaum Martin (Pontiac)"]
 __url__ = ["http://gitorious.org/blender-scripts/blender-measure-panel-script",
     "http://blenderartists.org/forum/showthread.php?t=177800"]
-__version__ = '0.2.1'
+__version__ = '0.3'
 __bpydoc__ = """
 Measure panel
 
@@ -37,6 +37,7 @@ This script displays the distance:
 * between 2 object centers (if exactly TWO objects are selected)
 
 Usage:
+
 This functionality can be accessed via the
 "Properties" panel in 3D View ([N] key).
 
@@ -44,6 +45,8 @@ It's very helpful to use one or two "Empty" objects with
 "Snap during transform" enabled for fast measurement.
 
 Version history:
+
+v0.3 - Support for mesh edit mode (1 or 2 selected vertices)
 v0.2.1 - Small fix (selecting nothing didn't calculate the distance
     of the cursor from the origin anymore)
 v0.2 - Distance value is now displayed via a FloatProperty widget (and
@@ -51,6 +54,12 @@ v0.2 - Distance value is now displayed via a FloatProperty widget (and
     The value is save inside the scene right now.)
     Thanks goes to ideasman42 (Campbell Barton) for helping me out on this.
 v0.1 - Initial revision. Seems to work fine for most purposes.
+
+TODO:
+
+There is a random segmentation fault when moving the 3D cursor in edit mode.
+Mainly this happens when clickin inside the white circle of the translation
+manipulator.
 """
 
 
@@ -66,78 +75,136 @@ class VIEW3D_PT_measure(bpy.types.Panel):
         layout = self.layout
 
         # Get the active object.
-        obj = context.object
+        obj = context.active_object
 
-        # Define a temporary attribute for the distance value
-        context.scene.FloatProperty(
-            name="Distance",
-            attr="measure_panel_dist",
-            precision=6)
+        if (context.mode == 'EDIT_MESH'):
+            if (obj and obj.type == 'MESH' and obj.data):
+                # We need to make sure we have the most recent mesh state!
+                # The "selected" attributes need to be correct.
+                # For this we exit and re-enter edit mode -> updated selection.
+                # @todo: Better way to do this?
+                bpy.ops.object.editmode_toggle()
+                bpy.ops.object.editmode_toggle()
 
-        if (context.selected_objects
-            and len(context.selected_objects) == 2):
-            # 2 objects selected.
-            # We measure the distance between the 2 selected objects.
-            obj1 = context.selected_objects[0]
-            obj2 = context.selected_objects[1]
-            obj1_loc = Vector(obj1.location)
-            obj2_loc = Vector(obj2.location)
-            test = Vector(obj1.location) - Vector(obj2.location)
+                # Get mesh data from Object.
+                mesh = obj.data
 
-            context.scene.measure_panel_dist = test.length
+                # Get the selected vertices.
+                # @todo: Better 8more efficient) way to do this?
+                verts_selected = [v for v in mesh.verts if v.selected == 1]
 
-            row = layout.row()
-            row.prop(context.scene, "measure_panel_dist")
+                if len(verts_selected) == 1:
+                    # One vertex selected.
+                    # We measure the distance from the
+                    # selected vertex object to the 3D cursor.
+                    cur_loc = Vector(context.scene.cursor_location)
+                    vert_loc = Vector(verts_selected[0].co)
+                    test = vert_loc - cur_loc
 
-            row = layout.row()
-            row.label(text="", icon='OBJECT_DATA')
-            row.prop(obj1, "name", text="")
+                    context.scene.measure_panel_dist = test.length
 
-            row.label(text="", icon='ARROW_LEFTRIGHT')
+                    row = layout.row()
+                    row.prop(context.scene, "measure_panel_dist")
 
-            row.label(text="", icon='OBJECT_DATA')
-            row.prop(obj2, "name", text="")
+                    row = layout.row()
+                    row.label(text="", icon='CURSOR')
+                    row.label(text="", icon='ARROW_LEFTRIGHT')
+                    row.label(text="", icon='VERTEXSEL')
 
-        elif (obj and  obj.selected
-            and context.selected_objects
-            and len(context.selected_objects) == 1):
-            # One object selected.
-            # We measure the distance from the
-            # selected & active) object to the 3D cursor.
-            cur_loc = Vector(context.scene.cursor_location)
-            obj_loc = Vector(obj.location)
-            test = obj_loc - cur_loc
+                elif len(verts_selected) == 2:
+                    # Two vertices selected.
+                    # We measure the distance between the
+                    # two selected vertices.
+                    vert1_loc = Vector(verts_selected[0].co)
+                    vert2_loc = Vector(verts_selected[1].co)
+                    test = vert1_loc - vert2_loc
 
-            context.scene.measure_panel_dist = test.length
+                    context.scene.measure_panel_dist = test.length
 
-            row = layout.row()
-            #row.label(text=str(test.length))
-            row.prop(context.scene, "measure_panel_dist")
+                    row = layout.row()
+                    row.prop(context.scene, "measure_panel_dist")
 
-            row = layout.row()
-            row.label(text="", icon='CURSOR')
-            row.label(text="", icon='ARROW_LEFTRIGHT')
+                    row = layout.row()
+                    row.label(text="", icon='VERTEXSEL')
+                    row.label(text="", icon='ARROW_LEFTRIGHT')
+                    row.label(text="", icon='VERTEXSEL')
 
-            row.label(text="", icon='OBJECT_DATA')
-            row.prop(obj, "name", text="")
+                else:
+                    row = layout.row()
+                    row.label(text="Selection not supported.", icon='INFO')
 
-        elif (not context.selected_objects
-            or len(context.selected_objects) == 0):
-            # Nothing selected.
-            # We measure the distance from the origin to the 3D cursor.
-            test = Vector(context.scene.cursor_location)
-            context.scene.measure_panel_dist = test.length
+        elif (context.mode == 'OBJECT'):
+            # Define a temporary attribute for the distance value
+            context.scene.FloatProperty(
+                name="Distance",
+                attr="measure_panel_dist",
+                precision=6)
 
-            row = layout.row()
-            row.prop(context.scene, "measure_panel_dist")
+            if (context.selected_objects
+                and len(context.selected_objects) == 2):
+                # 2 objects selected.
+                # We measure the distance between the 2 selected objects.
+                obj1 = context.selected_objects[0]
+                obj2 = context.selected_objects[1]
+                obj1_loc = Vector(obj1.location)
+                obj2_loc = Vector(obj2.location)
+                test = Vector(obj1.location) - Vector(obj2.location)
 
-            row = layout.row()
-            row.label(text="", icon='CURSOR')
-            row.label(text="", icon='ARROW_LEFTRIGHT')
-            row.label(text="Origin [0,0,0]")
+                context.scene.measure_panel_dist = test.length
 
-        else:
-            row = layout.row()
-            row.label(text="Selection not supported.", icon='INFO')
+                row = layout.row()
+                row.prop(context.scene, "measure_panel_dist")
+
+                row = layout.row()
+                row.label(text="", icon='OBJECT_DATA')
+                row.prop(obj1, "name", text="")
+
+                row.label(text="", icon='ARROW_LEFTRIGHT')
+
+                row.label(text="", icon='OBJECT_DATA')
+                row.prop(obj2, "name", text="")
+
+            elif (obj and  obj.selected
+                and context.selected_objects
+                and len(context.selected_objects) == 1):
+                # One object selected.
+                # We measure the distance from the
+                # selected & active) object to the 3D cursor.
+                cur_loc = Vector(context.scene.cursor_location)
+                obj_loc = Vector(obj.location)
+                test = obj_loc - cur_loc
+
+                context.scene.measure_panel_dist = test.length
+
+                row = layout.row()
+                #row.label(text=str(test.length))
+                row.prop(context.scene, "measure_panel_dist")
+
+                row = layout.row()
+                row.label(text="", icon='CURSOR')
+
+                row.label(text="", icon='ARROW_LEFTRIGHT')
+
+                row.label(text="", icon='OBJECT_DATA')
+                row.prop(obj, "name", text="")
+
+            elif (not context.selected_objects
+                or len(context.selected_objects) == 0):
+                # Nothing selected.
+                # We measure the distance from the origin to the 3D cursor.
+                test = Vector(context.scene.cursor_location)
+                context.scene.measure_panel_dist = test.length
+
+                row = layout.row()
+                row.prop(context.scene, "measure_panel_dist")
+
+                row = layout.row()
+                row.label(text="", icon='CURSOR')
+                row.label(text="", icon='ARROW_LEFTRIGHT')
+                row.label(text="Origin [0,0,0]")
+
+            else:
+                row = layout.row()
+                row.label(text="Selection not supported.", icon='INFO')
 
 bpy.types.register(VIEW3D_PT_measure)
