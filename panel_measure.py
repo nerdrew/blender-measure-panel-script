@@ -26,7 +26,7 @@ Blender: 250
 __author__ = ["Buerbaum Martin (Pontiac)"]
 __url__ = ["http://gitorious.org/blender-scripts/blender-measure-panel-script",
     "http://blenderartists.org/forum/showthread.php?t=177800"]
-__version__ = '0.1'
+__version__ = '0.2'
 __bpydoc__ = """
 Measure panel
 
@@ -44,6 +44,10 @@ It's very helpful to use one or two "Empty" objects with
 "Snap during transform" enabled for fast measurement.
 
 Version history:
+v0.2 - Distance value is now displayed via a FloatProperty widget (and
+    therefore saved to file too right now [according to ideasman42].
+    The value is save inside the scene right now.)
+    Thanks goes to ideasman42 (Campbell Barton) for helping me out on this.
 v0.1 - Initial revision. Seems to work fine for most purposes.
 """
 
@@ -62,7 +66,15 @@ class VIEW3D_PT_measure(bpy.types.Panel):
         # Get the active object.
         obj = context.object
 
-        if (context.selected_objects and len(context.selected_objects) == 2):
+        # Define a temporary attribute for the distance value
+        context.scene.FloatProperty(
+            name="Distance",
+            attr="measure_panel_dist",
+            precision=6)
+
+        if (context.selected_objects
+            and len(context.selected_objects) == 2):
+            # 2 objects selected.
             # We measure the distance between the 2 selected objects.
             obj1 = context.selected_objects[0]
             obj2 = context.selected_objects[1]
@@ -70,30 +82,35 @@ class VIEW3D_PT_measure(bpy.types.Panel):
             obj2_loc = Vector(obj2.location)
             test = Vector(obj1.location) - Vector(obj2.location)
 
+            context.scene.measure_panel_dist = test.length
+
             row = layout.row()
-            row.label(text=str(test.length))
+            row.prop(context.scene, "measure_panel_dist")
 
             row = layout.row()
             row.label(text="", icon='OBJECT_DATA')
             row.prop(obj1, "name", text="")
 
             row.label(text="", icon='ARROW_LEFTRIGHT')
-            #row = layout.row()
-            #row.label(text="", icon='DOWNARROW_HLT')
-            #row = layout.row()
 
             row.label(text="", icon='OBJECT_DATA')
             row.prop(obj2, "name", text="")
 
-        elif (obj and  obj.selected):
+        elif (obj and  obj.selected
+            and context.selected_objects
+            and len(context.selected_objects) == 1):
+            # One object selected.
             # We measure the distance from the
             # selected & active) object to the 3D cursor.
             cur_loc = Vector(context.scene.cursor_location)
             obj_loc = Vector(obj.location)
             test = obj_loc - cur_loc
 
+            context.scene.measure_panel_dist = test.length
+
             row = layout.row()
-            row.label(text=str(test.length))
+            #row.label(text=str(test.length))
+            row.prop(context.scene, "measure_panel_dist")
 
             row = layout.row()
             row.label(text="", icon='CURSOR')
@@ -102,16 +119,23 @@ class VIEW3D_PT_measure(bpy.types.Panel):
             row.label(text="", icon='OBJECT_DATA')
             row.prop(obj, "name", text="")
 
-        else:
+        elif (context.selected_objects
+            and len(context.selected_objects) == 0):
             # Nothing selected.
             # We measure the distance from the origin to the 3D cursor.
             test = Vector(context.scene.cursor_location)
+            context.scene.measure_panel_dist = test.length
+
             row = layout.row()
-            row.label(text=str(test.length))
+            row.prop(context.scene, "measure_panel_dist")
 
             row = layout.row()
             row.label(text="", icon='CURSOR')
             row.label(text="", icon='ARROW_LEFTRIGHT')
             row.label(text="Origin [0,0,0]")
+
+        else:
+            row = layout.row()
+            row.label(text="Selection not supported.", icon='INFO')
 
 bpy.types.register(VIEW3D_PT_measure)
