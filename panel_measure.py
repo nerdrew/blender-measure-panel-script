@@ -33,11 +33,20 @@ __version__ = '0.4'
 __bpydoc__ = """
 Measure panel
 
-This script displays the distance:
-* of the 3D cursor to the origin of the 3D space (if NOTHING is selected)
-* of the 3D cursor to the center of an object
+This script displays in OBJECT MODE:
+* The distance of the 3D cursor to the origin of the
+  3D space (if NOTHING is selected).
+* The distance of the 3D cursor to the center of an object
   (if exactly ONE object is selected).
-* between 2 object centers (if exactly TWO objects are selected)
+* The distance between 2 object centers
+  (if exactly TWO objects are selected).
+* The surface area of any selected mesh object.
+
+Display in EDIT MODE (Local and Global space supported):
+* The distance of the 3D cursor to the origin
+  (in Local space it is the object center instead).
+* The distance of the 3D cursor to a selected vertex.
+* The distance between 2 selected vertices.
 
 Usage:
 
@@ -73,6 +82,8 @@ TODO:
 There is a random segmentation fault when moving the 3D cursor in edit mode.
 Mainly this happens when clicking inside the white circle of the translation
 manipulator. There may be other cases though.
+
+See the other "todo" comments below.
 """
 
 
