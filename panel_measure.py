@@ -26,7 +26,7 @@ Blender: 250
 __author__ = ["Buerbaum Martin (Pontiac)"]
 __url__ = ["http://gitorious.org/blender-scripts/blender-measure-panel-script",
     "http://blenderartists.org/forum/showthread.php?t=177800"]
-__version__ = '0.3.1'
+__version__ = '0.3.2'
 __bpydoc__ = """
 Measure panel
 
@@ -45,7 +45,9 @@ It's very helpful to use one or two "Empty" objects with
 "Snap during transform" enabled for fast measurement.
 
 Version history:
-
+v0.3.2 - Fixed calculation&display of local/global coordinates.
+    The user can now select via dropdown which space is wanted/needed
+    Basically this is a bugfix and new feature at the same time :-)
 v0.3.1 - Fixed bug where "measure_panel_dist" wasn't defined
     before it was used.
     Also added the distance calculation "origin -> 3D cursor" for edit mode.
@@ -61,8 +63,8 @@ v0.1 - Initial revision. Seems to work fine for most purposes.
 TODO:
 
 There is a random segmentation fault when moving the 3D cursor in edit mode.
-Mainly this happens when clickin inside the white circle of the translation
-manipulator.
+Mainly this happens when clicking inside the white circle of the translation
+manipulator. There may be other cases though.
 """
 
 
@@ -73,7 +75,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
     bl_default_closed = False
 
     def draw(self, context):
-        from Mathutils import Vector
+        from Mathutils import Vector, Matrix
 
         layout = self.layout
 
@@ -85,6 +87,20 @@ class VIEW3D_PT_measure(bpy.types.Panel):
             name="Distance",
             attr="measure_panel_dist",
             precision=6)
+
+        TRANSFORM = [
+            ("measure_global", "Global",
+                "Calculate values in global space."),
+            ("measure_local", "Local",
+                "Calculate values inside the local object space.")]
+
+        # Define dropdown for the global/local setting
+        bpy.types.Scene.EnumProperty(
+            attr="measure_panel_transform",
+            name="Space",
+            description="Choose in which space you want to measure.",
+            items=TRANSFORM,
+            default='0')
 
         if (context.mode == 'EDIT_MESH'):
             if (obj and obj.type == 'MESH' and obj.data):
@@ -98,14 +114,25 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 # Get mesh data from Object.
                 mesh = obj.data
 
+                # Get transformation matrix from object.
+                ob_mat = obj.matrix
+                # Also make an inversed copy! of the matrix.
+                ob_mat_inv = Matrix.invert(ob_mat.copy())
+
                 # Get the selected vertices.
-                # @todo: Better 8more efficient) way to do this?
+                # @todo: Better (more efficient) way to do this?
                 verts_selected = [v for v in mesh.verts if v.selected == 1]
 
                 if len(verts_selected) == 0:
                     # Nothing selected.
                     # We measure the distance from the origin to the 3D cursor.
                     test = Vector(context.scene.cursor_location)
+
+                    # Convert to local space, if needed.
+                    space = context.scene.measure_panel_transform
+                    if space == "measure_local":
+                        test = test * ob_mat_inv
+
                     context.scene.measure_panel_dist = test.length
 
                     row = layout.row()
@@ -115,13 +142,23 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.label(text="", icon='CURSOR')
                     row.label(text="", icon='ARROW_LEFTRIGHT')
                     row.label(text="Origin [0,0,0]")
+
+                    row = layout.row()
+                    row.prop(context.scene, "measure_panel_transform")
+
                 elif len(verts_selected) == 1:
                     # One vertex selected.
                     # We measure the distance from the
                     # selected vertex object to the 3D cursor.
                     cur_loc = Vector(context.scene.cursor_location)
                     vert_loc = Vector(verts_selected[0].co)
-                    test = vert_loc - cur_loc
+
+                    # Convert to local or global space.
+                    space = context.scene.measure_panel_transform
+                    if space == "measure_local":
+                        test = vert_loc - cur_loc * ob_mat_inv
+                    else:
+                        test = vert_loc * ob_mat - cur_loc
 
                     context.scene.measure_panel_dist = test.length
 
@@ -133,13 +170,22 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.label(text="", icon='ARROW_LEFTRIGHT')
                     row.label(text="", icon='VERTEXSEL')
 
+                    row = layout.row()
+                    row.prop(context.scene, "measure_panel_transform")
+
                 elif len(verts_selected) == 2:
                     # Two vertices selected.
                     # We measure the distance between the
                     # two selected vertices.
                     vert1_loc = Vector(verts_selected[0].co)
                     vert2_loc = Vector(verts_selected[1].co)
-                    test = vert1_loc - vert2_loc
+
+                    # Convert to local or global space.
+                    space = context.scene.measure_panel_transform
+                    if space == "measure_local":
+                        test = vert1_loc - vert2_loc
+                    else:
+                        test = vert1_loc * ob_mat - vert2_loc * ob_mat
 
                     context.scene.measure_panel_dist = test.length
 
@@ -150,6 +196,9 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.label(text="", icon='VERTEXSEL')
                     row.label(text="", icon='ARROW_LEFTRIGHT')
                     row.label(text="", icon='VERTEXSEL')
+
+                    row = layout.row()
+                    row.prop(context.scene, "measure_panel_transform")
 
                 else:
                     row = layout.row()
