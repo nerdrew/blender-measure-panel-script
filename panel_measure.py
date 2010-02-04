@@ -29,7 +29,7 @@ Blender: 250
 __author__ = ["Buerbaum Martin (Pontiac)"]
 __url__ = ["http://gitorious.org/blender-scripts/blender-measure-panel-script",
     "http://blenderartists.org/forum/showthread.php?t=177800"]
-__version__ = '0.6'
+__version__ = '0.6.1'
 __bpydoc__ = """
 Measure panel
 
@@ -57,6 +57,9 @@ It's very helpful to use one or two "Empty" objects with
 "Snap during transform" enabled for fast measurement.
 
 Version history:
+v0.6.1 - Updated reenter_editmode operator description.
+    Fixed search for selected mesh objects.
+    Added "BU^2" after values that are not yet translated via "unit".
 v0.6
     *) Fix:  Removed EditMode/ObjectMode toggle stuff. This causes all the
        crashes and is generally not stable.
@@ -156,8 +159,8 @@ def measureLocal(scene):
 class OBJECT_OT_reenter_editmode(bpy.types.Operator):
     bl_label = "Re-enter EditMode"
     bl_idname = "reenter_editmode"
-    bl_description = "Exists and re-enters into edit mode" \
-        " of a selected and active mesh object."
+    bl_description = "Update mesh data of an active mesh object." \
+        " This is done by exiting and re-entering mesh edit mode."
 
     def invoke(self, context, event):
 
@@ -384,7 +387,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 # We have more that 2 objects selected...
 
                 mesh_objects = [o for o in context.selected_objects
-                    if (obj.type == 'MESH' and obj.data)]
+                    if (o.type == 'MESH' and o.data)]
 
                 if (len(mesh_objects) > 0):
                     # ... and at least one of them is a mesh.
@@ -402,7 +405,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                         if (area >= 0):
                             row = layout.row()
                             row.label(text=o.name, icon='OBJECT_DATA')
-                            row.label(text=str(round(area, PRECISION)))
+                            row.label(text=str(round(area, PRECISION))+" BU^2")
 
                     row = layout.row()
                     row.prop(scene,
