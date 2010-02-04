@@ -57,6 +57,16 @@ It's very helpful to use one or two "Empty" objects with
 "Snap during transform" enabled for fast measurement.
 
 Version history:
+v0.6
+    *) Fix:  Removed EditMode/ObjectMode toggle stuff. This causes all the
+       crashes and is generally not stable.
+       Instead I've added a manual "refresh" button.
+       I registered a new operator OBJECT_OT_reenter_editmode for this.
+    *) Use "unit" settings (i.e. none/metric/imperial)
+    *) Fix: Only display surface area (>=3 objects) if return value is >=0.
+    *) Minor: Renamed objectFaceArea to objectSurfaceArea
+    *) Updated Vector() and tuple() usage.
+    *) Fixed some comments.
 v0.5 - Global surface area (object mode) is now calculated as well.
     Support area calculation for face selection.
     Also made measurement panel closed by default. (Area calculation
@@ -104,7 +114,7 @@ See the other "todo" comments below.
 # @todo Support other object types (surfaces, etc...)?
 # @todo Is there a better way to handle
 #       global calculation? (transformed mesh)
-def objectFaceArea(obj, selectedOnly, globalSpace):
+def objectSurfaceArea(obj, selectedOnly, globalSpace):
     if (obj and obj.type == 'MESH' and obj.data):
         areaTotal = 0
 
@@ -143,6 +153,26 @@ def measureLocal(scene):
     return (scene.measure_panel_transform == "measure_local")
 
 
+class OBJECT_OT_reenter_editmode(bpy.types.Operator):
+    bl_label = "Re-enter EditMode"
+    bl_idname = "reenter_editmode"
+    bl_description = "Exists and re-enters into edit mode" \
+        " of a selected and active mesh object."
+
+    def invoke(self, context, event):
+
+        # Get the active object.
+        obj = context.active_object
+
+        if (obj and obj.type == 'MESH' and context.mode == 'EDIT_MESH'):
+            # Exit and re-enter mesh EditMode.
+            bpy.ops.object.mode_set(mode='OBJECT')
+            bpy.ops.object.mode_set(mode='EDIT')
+            return {'FINISHED'}
+
+        return {'CANCELLED'}
+
+
 class VIEW3D_PT_measure(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
@@ -162,13 +192,15 @@ class VIEW3D_PT_measure(bpy.types.Panel):
         scene.FloatProperty(
             name="Distance",
             attr="measure_panel_dist",
-            precision=PRECISION)
+            precision=PRECISION,
+            unit="LENGTH")
         scene.FloatProperty(
             attr="measure_panel_area1",
-            precision=PRECISION)
+            precision=PRECISION,
+            unit="AREA")
         scene.FloatProperty(
             attr="measure_panel_area2",
-            precision=PRECISION)
+            unit="AREA")
 
         TRANSFORM = [
             ("measure_global", "Global",
@@ -190,13 +222,10 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 # when EditMode was last exited. A Python script operating
                 # in EditMode must exit EditMode before getting the current
                 # selection state of the mesh."
-                # http://www.blender.org/documentation/249PythonDocpyth/
+                # http://www.blender.org/documentation/249PythonDoc/
                 # /Mesh.MVert-class.html#sel
                 # We can only provide this by existing & re-entering EditMode.
                 # @todo: Better way to do this?
-                #        This may even cause those Segmentation faults.
-                bpy.ops.object.editmode_toggle()
-                bpy.ops.object.editmode_toggle()
 
                 # Get mesh data from Object.
                 mesh = obj.data
@@ -214,13 +243,14 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 if len(verts_selected) == 0:
                     # Nothing selected.
                     # We measure the distance from the origin to the 3D cursor.
-                    test = Vector(scene.cursor_location)
+                    dist_vec = scene.cursor_location
 
                     # Convert to local space, if needed.
                     if measureLocal(scene):
-                        test = (test - obj.location) * ob_mat_inv
+                        obj_loc = Vector(tuple(obj.location))
+                        dist_vec = (dist_vec - obj_loc) * ob_mat_inv
 
-                    scene.measure_panel_dist = test.length
+                    scene.measure_panel_dist = dist_vec.length
 
                     row = layout.row()
                     row.prop(scene, "measure_panel_dist")
@@ -231,6 +261,16 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.label(text="Origin [0,0,0]")
 
                     row = layout.row()
+                    row.operator("reenter_editmode",
+                        text="Update selection & distance")
+#                       @todo
+#                        description="The surface area value can" \
+#                            " not be updated in mesh edit mode" \
+#                            " automatically. Press this button" \
+#                            " to do this manually, after you changed" \
+#                            " the selection.")
+
+                    row = layout.row()
                     row.prop(scene,
                         "measure_panel_transform",
                         expand=True)
@@ -239,16 +279,17 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     # One vertex selected.
                     # We measure the distance from the
                     # selected vertex object to the 3D cursor.
-                    cur_loc = Vector(scene.cursor_location)
-                    vert_loc = Vector(verts_selected[0].co)
+                    cur_loc = scene.cursor_location
+                    vert_loc = Vector(tuple(verts_selected[0].co))
+                    obj_loc = Vector(tuple(obj.location))
 
                     # Convert to local or global space.
                     if measureLocal(scene):
-                        test = vert_loc - (cur_loc - obj.location) * ob_mat_inv
+                        dist_vec = vert_loc - (cur_loc - obj_loc) * ob_mat_inv
                     else:
-                        test = vert_loc * ob_mat + obj.location - cur_loc
+                        dist_vec = vert_loc * ob_mat + obj_loc - cur_loc
 
-                    scene.measure_panel_dist = test.length
+                    scene.measure_panel_dist = dist_vec.length
 
                     row = layout.row()
                     row.prop(scene, "measure_panel_dist")
@@ -259,26 +300,28 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.label(text="", icon='VERTEXSEL')
 
                     row = layout.row()
+                    row.operator("reenter_editmode",
+                        text="Update selection & distance")
+
+                    row = layout.row()
                     row.prop(scene,
                         "measure_panel_transform",
                         expand=True)
-                    #Dropdown:
-                    #row.prop(scene, "measure_panel_transform")
 
                 elif len(verts_selected) == 2:
                     # Two vertices selected.
                     # We measure the distance between the
                     # two selected vertices.
-                    vert1_loc = Vector(verts_selected[0].co)
-                    vert2_loc = Vector(verts_selected[1].co)
+                    vert1_loc = Vector(tuple(verts_selected[0].co))
+                    vert2_loc = Vector(tuple(verts_selected[1].co))
 
                     # Convert to local or global space.
                     if measureLocal(scene):
-                        test = vert1_loc - vert2_loc
+                        dist_vec = vert1_loc - vert2_loc
                     else:
-                        test = vert1_loc * ob_mat - vert2_loc * ob_mat
+                        dist_vec = vert1_loc * ob_mat - vert2_loc * ob_mat
 
-                    scene.measure_panel_dist = test.length
+                    scene.measure_panel_dist = dist_vec.length
 
                     row = layout.row()
                     row.prop(scene, "measure_panel_dist")
@@ -287,6 +330,10 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.label(text="", icon='VERTEXSEL')
                     row.label(text="", icon='ARROW_LEFTRIGHT')
                     row.label(text="", icon='VERTEXSEL')
+
+                    row = layout.row()
+                    row.operator("reenter_editmode",
+                        text="Update selection & distance")
 
                     row = layout.row()
                     row.prop(scene,
@@ -299,7 +346,8 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     faces_selected = [f for f in mesh.faces if f.selected == 1]
 
                     if len(faces_selected) > 0:
-                        area = objectFaceArea(obj, True, measureGlobal(scene))
+                        area = objectSurfaceArea(obj, True,
+                            measureGlobal(scene))
                         if (area >= 0):
                             row = layout.row()
                             row.label(text="Surface area (selected faces):")
@@ -312,6 +360,10 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                             row.prop(scene, "measure_panel_area1")
 
                             row = layout.row()
+                            row.operator("reenter_editmode",
+                                text="Update selection & area")
+
+                            row = layout.row()
                             row.prop(scene,
                                 "measure_panel_transform",
                                 expand=True)
@@ -319,6 +371,10 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     else:
                         row = layout.row()
                         row.label(text="Selection not supported.", icon='INFO')
+
+                        row = layout.row()
+                        row.operator("reenter_editmode",
+                            text="Update selection")
 
         elif (context.mode == 'OBJECT'):
             # We are working on object mode.
@@ -334,16 +390,19 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     # ... and at least one of them is a mesh.
 
                     # Calculate and display surface area of the objects.
+                    # @todo: Convert to scene units! We do not have a
+                    # FloatProperty field here for automatic conversion.
                     row = layout.row()
                     row.label(text="Surface area:")
 
                     row = layout.row()
                     for o in mesh_objects:
-                        row = layout.row()
-                        row.label(text=o.name, icon='OBJECT_DATA')
-                        row.label(text=str(round(
-                            objectFaceArea(o, False, measureGlobal(scene)),
-                            PRECISION)))
+                        area = objectSurfaceArea(o, False,
+                            measureGlobal(scene))
+                        if (area >= 0):
+                            row = layout.row()
+                            row.label(text=o.name, icon='OBJECT_DATA')
+                            row.label(text=str(round(area, PRECISION)))
 
                     row = layout.row()
                     row.prop(scene,
@@ -356,11 +415,11 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 # We measure the distance between the 2 selected objects.
                 obj1 = context.selected_objects[0]
                 obj2 = context.selected_objects[1]
-                obj1_loc = Vector(obj1.location)
-                obj2_loc = Vector(obj2.location)
-                test = Vector(obj1.location) - Vector(obj2.location)
+                obj1_loc = Vector(tuple(obj1.location))
+                obj2_loc = Vector(tuple(obj2.location))
+                dist_vec = obj1_loc - obj2_loc
 
-                scene.measure_panel_dist = test.length
+                scene.measure_panel_dist = dist_vec.length
 
                 row = layout.row()
                 row.prop(scene, "measure_panel_dist")
@@ -375,8 +434,8 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row.prop(obj2, "name", text="")
 
                 # Calculate and display surface area of the objects.
-                area1 = objectFaceArea(obj1, False, measureGlobal(scene))
-                area2 = objectFaceArea(obj2, False, measureGlobal(scene))
+                area1 = objectSurfaceArea(obj1, False, measureGlobal(scene))
+                area2 = objectSurfaceArea(obj2, False, measureGlobal(scene))
                 if (area1 >= 0 or area2 >= 0):
                     row = layout.row()
                     row.label(text="Surface area:")
@@ -404,14 +463,14 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 # One object selected.
                 # We measure the distance from the
                 # selected & active) object to the 3D cursor.
-                cur_loc = Vector(scene.cursor_location)
-                obj_loc = Vector(obj.location)
-                test = obj_loc - cur_loc
+                cur_loc = scene.cursor_location
+                obj_loc = Vector(tuple(obj.location))
+                dist_vec = obj_loc - cur_loc
 
-                scene.measure_panel_dist = test.length
+                scene.measure_panel_dist = dist_vec.length
 
                 row = layout.row()
-                #row.label(text=str(test.length))
+                #row.label(text=str(dist_vec.length))
                 row.prop(scene, "measure_panel_dist")
 
                 row = layout.row()
@@ -423,7 +482,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row.prop(obj, "name", text="")
 
                 # Calculate and display surface area of the object.
-                area = objectFaceArea(obj, False, measureGlobal(scene))
+                area = objectSurfaceArea(obj, False, measureGlobal(scene))
                 if (area >= 0):
                     row = layout.row()
                     row.label(text="Surface area:")
@@ -442,8 +501,8 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                   or len(context.selected_objects) == 0):
                 # Nothing selected.
                 # We measure the distance from the origin to the 3D cursor.
-                test = Vector(scene.cursor_location)
-                scene.measure_panel_dist = test.length
+                dist_vec = scene.cursor_location
+                scene.measure_panel_dist = dist_vec.length
 
                 row = layout.row()
                 row.prop(scene, "measure_panel_dist")
@@ -458,3 +517,4 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row.label(text="Selection not supported.", icon='INFO')
 
 bpy.types.register(VIEW3D_PT_measure)
+bpy.types.register(OBJECT_OT_reenter_editmode)
