@@ -147,7 +147,8 @@ def objectSurfaceArea(obj, selectedOnly, globalSpace):
 
 
 def objectVolume(obj, globalSpace):
-    if !(obj and obj.type == 'MESH' and obj.data): return -1
+    if not (obj and obj.type == 'MESH' and obj.data): 
+        return -1
 
     volume = 0.0
     if globalSpace:
@@ -164,11 +165,11 @@ def objectVolume(obj, globalSpace):
 
 
 def units():
-    if bpy.context.scene.unit_settings.system == "METRIC"
+    if bpy.context.scene.unit_settings.system == "METRIC":
         return "m"
-    elif bpy.context.scene.unit_settings.system == "IMERIAL"
+    elif bpy.context.scene.unit_settings.system == "IMERIAL":
         return "yd"
-    else
+    else:
         return "BU"
 
 
@@ -323,8 +324,6 @@ class VIEW3D_PT_measure(bpy.types.Panel):
 
                     scene.measure_panel_dist = dist_vec.length
 
-                    scene.measure_panel_volume = 
-
                     row = layout.row()
                     row.prop(scene, "measure_panel_dist")
 
@@ -431,17 +430,23 @@ class VIEW3D_PT_measure(bpy.types.Panel):
 
                     row = layout.row()
                     for o in mesh_objects:
-                        area = objectSurfaceArea(o, False,
-                            measureGlobal(scene))
-                        if (area >= 0):
+                        area = objectSurfaceArea(o, False, measureGlobal(scene))
+                        if (area >= 0 or volume >=0):
                             row = layout.row()
                             row.label(text=o.name, icon='ICON_OBJECT_DATA')
-                            row.label(text=str(round(area, PRECISION))+" BU^2")
+                            row.label(text=str(round(area, PRECISION))+" "+units()+"^2")
+
+                    row = layout.row()
+                    row.label(text="Volume:")
+
+                    row = layout.row()
+                    for o in mesh_objects:
                         volume = objectVolume(o, measureGlobabl(scene))
-                        if volum >=0:
+                        if volume >= 0:
                             row = layout.row()
-                            row.label(text=o.name, icon="ICON_OBJECT_DATA")
-                            row.label(text=str(round(volume, PRECISION)+" BU^3")
+                            row.label(text=o.name, icon='ICON_OBJECT_DATA')
+                            row.label(text=str(round(volume, PRECISION))+" "+units()+"^3")
+
                     row = layout.row()
                     row.prop(scene,
                         "measure_panel_transform",
