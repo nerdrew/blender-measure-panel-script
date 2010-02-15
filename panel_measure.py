@@ -140,10 +140,36 @@ def objectSurfaceArea(obj, selectedOnly, globalSpace):
 #        if remove:
 #            bpy.context.main.meshes.remove(mesh)
 
-        return areaTotal
+        return areaTotal * (bpy.context.scene.unit_settings.scale_length ** 2)
 
     # We can not calculate an area for this object.
     return -1
+
+
+def objectVolume(obj, globalSpace):
+    if !(obj and obj.type == 'MESH' and obj.data): return -1
+
+    volume = 0.0
+    if globalSpace:
+        mesh = obj.data.copy()
+        mesh.transform(obj.matrix)
+    else:
+        mesh = obj.data
+
+    for face in mesh.faces:
+        if len(face.verts) > 3: return -1
+        volume += mesh.verts[face.verts[0]].co.cross(mesh.verts[face.verts[1]].co).dot(mesh.verts[face.verts[2]].co)
+    # blender's natural units are meters. 1m = 1bu. Imperial units use yards.
+    return volume / 6 * (bpy.context.scene.unit_settings.scale_length ** 3)
+
+
+def units():
+    if bpy.context.scene.unit_settings.system == "METRIC"
+        return "m"
+    elif bpy.context.scene.unit_settings.system == "IMERIAL"
+        return "yd"
+    else
+        return "BU"
 
 
 # User friendly access to the "space" setting.
@@ -204,6 +230,9 @@ class VIEW3D_PT_measure(bpy.types.Panel):
         scene.FloatProperty(
             attr="measure_panel_area2")#,
             #unit="AREA")
+        scene.FloatProperty(
+            attr="measure_panel_volume",
+            precision=PRECISION)
 
         TRANSFORM = [
             ("measure_global", "Global",
@@ -293,6 +322,8 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                         dist_vec = vert_loc * ob_mat + obj_loc - cur_loc
 
                     scene.measure_panel_dist = dist_vec.length
+
+                    scene.measure_panel_volume = 
 
                     row = layout.row()
                     row.prop(scene, "measure_panel_dist")
@@ -406,7 +437,11 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                             row = layout.row()
                             row.label(text=o.name, icon='ICON_OBJECT_DATA')
                             row.label(text=str(round(area, PRECISION))+" BU^2")
-
+                        volume = objectVolume(o, measureGlobabl(scene))
+                        if volum >=0:
+                            row = layout.row()
+                            row.label(text=o.name, icon="ICON_OBJECT_DATA")
+                            row.label(text=str(round(volume, PRECISION)+" BU^3")
                     row = layout.row()
                     row.prop(scene,
                         "measure_panel_transform",
