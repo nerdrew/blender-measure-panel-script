@@ -289,8 +289,8 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.prop(scene, "measure_panel_dist")
 
                     row = layout.row()
-                    row.label(text="", icon='ICON_CURSOR')
-                    row.label(text="", icon='ICON_ARROW_LEFTRIGHT')
+                    row.label(text="", icon='CURSOR')
+                    row.label(text="", icon='ARROW_LEFTRIGHT')
                     row.label(text="Origin [0,0,0]")
 
                     row = layout.row()
@@ -328,9 +328,9 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.prop(scene, "measure_panel_dist")
 
                     row = layout.row()
-                    row.label(text="", icon='ICON_CURSOR')
-                    row.label(text="", icon='ICON_ARROW_LEFTRIGHT')
-                    row.label(text="", icon='ICON_VERTEXSEL')
+                    row.label(text="", icon='CURSOR')
+                    row.label(text="", icon='ARROW_LEFTRIGHT')
+                    row.label(text="", icon='VERTEXSEL')
 
                     row = layout.row()
                     row.operator("reenter_editmode",
@@ -360,9 +360,9 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row.prop(scene, "measure_panel_dist")
 
                     row = layout.row()
-                    row.label(text="", icon='ICON_VERTEXSEL')
-                    row.label(text="", icon='ICON_ARROW_LEFTRIGHT')
-                    row.label(text="", icon='ICON_VERTEXSEL')
+                    row.label(text="", icon='VERTEXSEL')
+                    row.label(text="", icon='ARROW_LEFTRIGHT')
+                    row.label(text="", icon='VERTEXSEL')
 
                     row = layout.row()
                     row.operator("reenter_editmode",
@@ -388,7 +388,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                             row = layout.row()
                             row.label(
                                 text=str(len(faces_selected)),
-                                icon='ICON_FACESEL')
+                                icon='FACESEL')
                             scene.measure_panel_area1 = area
                             row.prop(scene, "measure_panel_area1")
 
@@ -403,7 +403,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
 
                     else:
                         row = layout.row()
-                        row.label(text="Selection not supported.", icon='ICON_INFO')
+                        row.label(text="Selection not supported.", icon='INFO')
 
                         row = layout.row()
                         row.operator("reenter_editmode",
@@ -433,7 +433,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                         area = objectSurfaceArea(o, False, measureGlobal(scene))
                         if (area >= 0 or volume >=0):
                             row = layout.row()
-                            row.label(text=o.name, icon='ICON_OBJECT_DATA')
+                            row.label(text=o.name, icon='OBJECT_DATA')
                             row.label(text=str(round(area, PRECISION))+" "+units()+"^2")
 
                     row = layout.row()
@@ -444,7 +444,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                         volume = objectVolume(o, measureGlobabl(scene))
                         if volume >= 0:
                             row = layout.row()
-                            row.label(text=o.name, icon='ICON_OBJECT_DATA')
+                            row.label(text=o.name, icon='OBJECT_DATA')
                             row.label(text=str(round(volume, PRECISION))+" "+units()+"^3")
 
                     row = layout.row()
@@ -468,12 +468,12 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row.prop(scene, "measure_panel_dist")
 
                 row = layout.row()
-                row.label(text="", icon='ICON_OBJECT_DATA')
+                row.label(text="", icon='OBJECT_DATA')
                 row.prop(obj1, "name", text="")
 
-                row.label(text="", icon='ICON_ARROW_LEFTRIGHT')
+                row.label(text="", icon='ARROW_LEFTRIGHT')
 
-                row.label(text="", icon='ICON_OBJECT_DATA')
+                row.label(text="", icon='OBJECT_DATA')
                 row.prop(obj2, "name", text="")
 
                 # Calculate and display surface area of the objects.
@@ -485,13 +485,13 @@ class VIEW3D_PT_measure(bpy.types.Panel):
 
                     if (area1 >= 0):
                         row = layout.row()
-                        row.label(text=obj1.name, icon='ICON_OBJECT_DATA')
+                        row.label(text=obj1.name, icon='OBJECT_DATA')
                         scene.measure_panel_area1 = area1
                         row.prop(scene, "measure_panel_area1")
 
                     if (area2 >= 0):
                         row = layout.row()
-                        row.label(text=obj2.name, icon='ICON_OBJECT_DATA')
+                        row.label(text=obj2.name, icon='OBJECT_DATA')
                         scene.measure_panel_area2 = area2
                         row.prop(scene, "measure_panel_area2")
 
@@ -517,11 +517,11 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row.prop(scene, "measure_panel_dist")
 
                 row = layout.row()
-                row.label(text="", icon='ICON_CURSOR')
+                row.label(text="", icon='CURSOR')
 
-                row.label(text="", icon='ICON_ARROW_LEFTRIGHT')
+                row.label(text="", icon='ARROW_LEFTRIGHT')
 
-                row.label(text="", icon='ICON_OBJECT_DATA')
+                row.label(text="", icon='OBJECT_DATA')
                 row.prop(obj, "name", text="")
 
                 # Calculate and display surface area of the object.
@@ -530,10 +530,12 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     row = layout.row()
                     row.label(text="Surface area:")
 
-                    row = layout.row()
-                    row.label(text=obj.name, icon='ICON_OBJECT_DATA')
-                    scene.measure_panel_area1 = area
-                    row.prop(scene, "measure_panel_area1")
+                    self.addObjectArea(obj)
+                    
+                    #row = layout.row()
+                    #row.label(text=obj.name, icon='OBJECT_DATA')
+                    #scene.measure_panel_area1 = area
+                    #row.prop(scene, "measure_panel_area1")
 
                     row = layout.row()
                     row.prop(scene,
@@ -551,14 +553,37 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row.prop(scene, "measure_panel_dist")
 
                 row = layout.row()
-                row.label(text="", icon='ICON_CURSOR')
-                row.label(text="", icon='ICON_ARROW_LEFTRIGHT')
+                row.label(text="", icon='CURSOR')
+                row.label(text="", icon='ARROW_LEFTRIGHT')
                 row.label(text="Origin [0,0,0]")
 
             else:
                 row = layout.row()
-                row.label(text="Selection not supported.", icon='ICON_INFO')
+                row.label(text="Selection not supported.", icon='INFO')
 
-bpy.types.register(VIEW3D_PT_measure)
+
+    def addObjectArea(self, obj):
+        row = self.layout.row()
+        row.label(text=obj.name, icon='OBJECT_DATA')
+        self.FloatProperty(attr="surfaceArea", precision=PRECISION)
+        #obj.measure_surface_area = objectSurfaceArea(obj, False, measureGlobal(bpy.context.scene))
+        #row.prop(obj, "measure_surface_area")
+        #self.surfaceArea = objectSurfaceArea(obj, False, measureGlobal(bpy.context.scene))
+        print(self)
+        row.prop(self, "surfaceArea")
+
+
+def register():
+    register = bpy.types.register
+    register(VIEW3D_PT_measure)
+    register(OBJECT_OT_reenter_editmode)
+
+def unregister():
+    bpy.types.unregister(VIEW3D_PT_measure)
+    bpy.types.register(OBJECT_OT_reenter_editmode)
+
+#bpy.types.register(VIEW3D_PT_measure)
 #bpy.types.register(OBJECT_OT_reenter_editmode)
-bpy.ops.add(OBJECT_OT_reenter_editmode)
+#bpy.ops.add(OBJECT_OT_reenter_editmode)
+
+# vim: set tabstop=4 softtabstop=4 shiftwidth=4:
