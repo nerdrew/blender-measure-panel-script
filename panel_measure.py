@@ -420,23 +420,6 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row.label(text="Selection not supported.", icon='INFO')
 
 
-    def addObjectAreas(self, *objs):
-        area = 0.0
-        total_area = 0.0
-        globalCoords = measureGlobal(self.scene)
-        for o in objs:
-            area = self.objectSurfaceArea(o, False, globalCoords)
-            if(area >= 0):
-                total_area += area
-            row = self.layout.row()
-            row.label(text=o.name+" S.A.: "+str(round(area, PRECISION))+self.units(2), icon='OBJECT_DATA')
-
-        if(len(objs) > 1 and total_area >= 0):
-            row = self.layout.row()
-            row.label(text='Total Area: '+str(round(total_area, PRECISION))+self.units(2), icon='OBJECT_DATA')
-        return total_area
-
-    
     def addAreasAndVolumes(self, *objs):
         area = 0.0
         total_area = 0.0
@@ -464,23 +447,6 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                 row = self.layout.row()
                 row.label(text='Total Volume: '+str(round(total_volume, PRECISION))+self.units(3), icon='OBJECT_DATA')
         return total_area
-
-
-    def addObjectVolumes(self, *objs):
-        volume = 0.0
-        total_volume = 0.0
-        globalCoords = measureGlobal(self.scene)
-        for o in objs:
-            volume = self.objectVolume(o, globalCoords)
-            if(volume >= 0):
-                total_volume += volume
-            row = self.layout.row()
-            row.label(text=o.name+" Vol.: "+str(round(volume, PRECISION))+self.units(3), icon='OBJECT_DATA')
-
-        if(len(objs) > 1 and total_volume >= 0):
-            row = self.layout.row()
-            row.label(text='Total Volume: '+str(round(total_volume, PRECISION))+self.units(3), icon='OBJECT_DATA')
-        return total_volume
 
 
     # Calculate the surface area of a mesh object.
