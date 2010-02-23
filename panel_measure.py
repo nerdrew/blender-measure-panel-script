@@ -337,7 +337,7 @@ class VIEW3D_PT_measure(bpy.types.Panel):
                     # FloatProperty field here for automatic conversion.
                     #self.addObjectAreas(mesh_objects)
                     #self.addObjectVolumes(mesh_objects)
-                    self.addAreasAndVolumes(mesh_objects)
+                    self.addAreasAndVolumes(*mesh_objects)
 
                     row = layout.row()
                     row.prop(scene,
